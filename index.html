@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kovai Wayfinder — S-CADE Tourism Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root{
+    --moss:#26433A; --moss-light:#3E6357; --marigold:#E3A23C; --clay:#A85C3E;
+    --stone:#EFE9DC; --paper:#FBF9F4; --ink:#1C2620; --line:#D9D0BC;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--stone); color:var(--ink); font-family:'Work Sans',sans-serif; -webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Fraunces',serif; font-weight:600; margin:0 0 .3em;}
+  a{color:inherit;}
+  button{font-family:inherit; cursor:pointer;}
+  :focus-visible{outline:3px solid var(--marigold); outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+
+  .topbar{position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between;
+    padding:.7rem 1.1rem; background:var(--moss); color:var(--paper); flex-wrap:wrap; gap:.6rem;}
+  .brand{display:flex; align-items:center; gap:.55rem; font-family:'Fraunces',serif; font-weight:600; font-size:1.15rem;}
+  .brand svg{width:30px;height:30px;flex:none;}
+  nav.tabs{display:flex; gap:.25rem; flex-wrap:wrap;}
+  nav.tabs button{background:transparent; border:1px solid rgba(251,249,244,.25); color:var(--paper);
+    padding:.4rem .8rem; border-radius:999px; font-size:.82rem; font-weight:600; letter-spacing:.01em;}
+  nav.tabs button.active{background:var(--marigold); color:var(--ink); border-color:var(--marigold);}
+  .user-chip{font-size:.78rem; opacity:.85; font-family:var(--mono);}
+
+  .status-banner{max-width:1080px; margin:.6rem auto 0; padding:0 1rem; display:flex; flex-direction:column; gap:.4rem;}
+  .status-banner .bar{border-radius:10px; padding:.55rem .8rem; font-size:.8rem; display:flex; align-items:center;
+    justify-content:space-between; gap:.6rem; flex-wrap:wrap; border:1px solid; line-height:1.4;}
+  .status-banner .bar span{max-width:820px;}
+  .status-banner .bar.live{background:#dcecdf; border-color:#b9d9c0; color:#1e5c33;}
+  .status-banner .bar.demo{background:#fbeecb; border-color:#eccf8f; color:#7a5417;}
+  .status-banner .bar.error{background:#f7dcd6; border-color:#e9b7ab; color:#8a3220;}
+  .status-banner .bar.loading{background:#eef2ee; border-color:var(--line); color:var(--moss);}
+  .status-banner .bar button{padding:.3rem .65rem; font-size:.76rem; flex:none;}
+
+  main{max-width:1080px; margin:0 auto; padding:1.1rem 1rem 4rem;}
+  section.tab{display:none;}
+  section.tab.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  .hero{display:flex; align-items:center; gap:1.6rem; padding:1.6rem 0 1rem; flex-wrap:wrap;}
+  .hero .compass-wrap{flex:none; width:120px; height:120px;}
+  .hero h1{font-size:clamp(1.5rem,4vw,2.2rem); line-height:1.15; max-width:34ch;}
+  .hero p{max-width:46ch; color:var(--moss-light); font-size:.95rem;}
+  .eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--clay); margin-bottom:.4rem;}
+
+  .card{background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:.9rem;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.85rem;}
+  .row{display:flex; gap:.6rem; flex-wrap:wrap; align-items:center;}
+  .pill{display:inline-flex; align-items:center; gap:.3rem; padding:.3rem .65rem; border-radius:999px; border:1px solid var(--line);
+    background:var(--stone); font-size:.78rem; font-weight:600;}
+  .pill.select{cursor:pointer; user-select:none;}
+  .pill.select.on{background:var(--moss); color:var(--paper); border-color:var(--moss);}
+  label{font-size:.78rem; font-weight:600; color:var(--moss); display:block; margin-bottom:.25rem;}
+  select,input[type=number],input[type=text],textarea{font-family:inherit; padding:.5rem .6rem; border-radius:8px; border:1px solid var(--line); background:#fff; width:100%;}
+  input[type=range]{width:100%;}
+  .btn{background:var(--moss); color:var(--paper); border:none; padding:.55rem 1.1rem; border-radius:9px; font-weight:600; font-size:.85rem;}
+  .btn.alt{background:var(--marigold); color:var(--ink);}
+  .btn.ghost{background:transparent; color:var(--moss); border:1px solid var(--moss);}
+  .btn.danger{background:transparent;color:var(--clay);border:1px solid var(--clay);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .small{font-size:.78rem; color:#5c6b62;}
+  .mono{font-family:var(--mono);}
+  hr.hair{border:none; border-top:1px solid var(--line); margin:.8rem 0;}
+
+  .item{border:1px solid var(--line); border-radius:12px; padding:.85rem; background:var(--paper); display:flex; flex-direction:column; gap:.4rem;}
+  .item .top{display:flex; justify-content:space-between; gap:.5rem; align-items:flex-start;}
+  .item h3{font-size:1.02rem;}
+  .badge{font-size:.68rem; font-weight:700; padding:.15rem .5rem; border-radius:999px; background:var(--stone); border:1px solid var(--line);}
+  .badge.open{background:#dcecdf; border-color:#b9d9c0; color:#1e5c33;}
+  .badge.closed{background:#f2dcd6; border-color:#e3bdb2; color:#8a3220;}
+  .score-bar{height:6px; border-radius:99px; background:var(--stone); overflow:hidden;}
+  .score-bar > span{display:block; height:100%; background:var(--marigold);}
+  .why{font-size:.78rem; color:var(--moss-light); font-style:italic;}
+  .item .actions{display:flex; gap:.4rem; margin-top:.3rem; flex-wrap:wrap;}
+  .icon-chip{font-size:1.1rem;}
+
+  #mapview{height:460px; border-radius:14px; overflow:hidden; border:1px solid var(--line);}
+  .map-controls{display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.6rem; align-items:end;}
+
+  .ar-stage{position:relative; width:100%; max-width:480px; aspect-ratio:9/16; margin:0 auto; border-radius:18px; overflow:hidden;
+    background:linear-gradient(180deg,#7fb3c9 0%, #cfe3d6 55%, #8a9c7a 100%); border:1px solid var(--line);}
+  .ar-stage video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .ar-layer{position:absolute; inset:0;}
+  .ar-marker{position:absolute; top:42%; transform:translate(-50%,-50%); text-align:center; cursor:pointer;}
+  .ar-pin{width:44px; height:44px; border-radius:50%; background:var(--marigold); display:flex; align-items:center; justify-content:center;
+    font-size:1.3rem; box-shadow:0 2px 10px rgba(0,0,0,.25); border:2px solid var(--paper);}
+  .ar-label{margin-top:.25rem; font-size:.68rem; font-weight:700; background:rgba(28,38,32,.8); color:#fff; padding:.15rem .4rem; border-radius:6px; white-space:nowrap;}
+  .ar-hud{position:absolute; top:.6rem; left:.6rem; right:.6rem; display:flex; justify-content:space-between; font-family:var(--mono); font-size:.68rem;
+    color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6);}
+  .ar-needle{position:absolute; bottom:.7rem; left:50%; transform:translateX(-50%); width:54px; height:54px;}
+  .ar-banner{position:absolute; bottom:0; left:0; right:0; background:rgba(28,38,32,.85); color:#fff; font-size:.75rem; padding:.5rem .7rem; text-align:center;}
+
+  table{width:100%; border-collapse:collapse; font-size:.85rem;}
+  th,td{text-align:left; padding:.45rem .5rem; border-bottom:1px solid var(--line);}
+  th{color:var(--moss); font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;}
+  .stat{background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:.8rem; text-align:center;}
+  .stat b{display:block; font-family:'Fraunces',serif; font-size:1.5rem;}
+
+  .modal-bg{position:fixed; inset:0; background:rgba(28,38,32,.55); display:none; align-items:center; justify-content:center; z-index:100; padding:1rem;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--paper); border-radius:14px; max-width:520px; width:100%; max-height:85vh; overflow:auto; padding:1.1rem 1.2rem;}
+  .modal .close{float:right; background:none; border:none; font-size:1.3rem; color:var(--moss);}
+  .review{border-top:1px solid var(--line); padding:.5rem 0; font-size:.85rem;}
+  .toast-wrap{position:fixed; bottom:1rem; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:.4rem; align-items:center;}
+  .toast{background:var(--ink); color:var(--paper); padding:.55rem 1rem; border-radius:9px; font-size:.82rem; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+
+  .compass-spin{animation:spin 30s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .itin-stop{display:flex; gap:.7rem; align-items:flex-start; padding:.6rem 0; border-top:1px solid var(--line);}
+  .itin-time{font-family:var(--mono); font-size:.75rem; color:var(--clay); width:64px; flex:none; padding-top:.15rem;}
+  footer.note{max-width:1080px; margin:0 auto; padding:0 1rem 2rem; font-size:.75rem; color:#6b7a70;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#FBF9F4" stroke-width="1.5"/>
+      <path d="M20 6 L23 20 L20 34 L17 20 Z" fill="#E3A23C"/><circle cx="20" cy="20" r="2.4" fill="#FBF9F4"/></svg>
+    Kovai Wayfinder
+  </div>
+  <nav class="tabs" id="tabnav"></nav>
+  <div class="user-chip" id="userChip">not signed in</div>
+</div>
+
+<div class="status-banner" id="statusBanner"></div>
+
+<main>
+
+  <section class="tab" data-tab="onboard">
+    <div class="hero">
+      <div class="compass-wrap">
+        <svg class="compass-spin" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="46" stroke="#26433A" stroke-width="1.2" opacity=".5"/>
+          <g stroke="#A85C3E" stroke-width="1.2"><line x1="50" y1="6" x2="50" y2="16"/><line x1="50" y1="84" x2="50" y2="94"/>
+          <line x1="6" y1="50" x2="16" y2="50"/><line x1="84" y1="50" x2="94" y2="50"/></g>
+          <path d="M50 18 L58 50 L50 82 L42 50 Z" fill="#E3A23C"/><circle cx="50" cy="50" r="4" fill="#26433A"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">Sustainable tourism · context-aware · Coimbatore demo</div>
+        <h1>Personalised, context-aware recommendations for places and local businesses — navigable by map or AR.</h1>
+        <p>This prototype runs entirely in your browser against seeded Coimbatore data, real geolocation, and free weather/map APIs — no backend or API keys required to try it.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:1.1rem">1 · Sign in (demo)</h2>
+      <div class="row">
+        <div style="flex:1;min-width:180px"><label>Your name</label><input type="text" id="regName" placeholder="e.g. Karthick"></div>
+        <div style="align-self:flex-end"><button class="btn" id="btnSignIn">Continue</button></div>
+      </div>
+      <p class="small">No password/server involved — this just names your session so reviews and preferences have an owner.</p>
+    </div>
+
+    <div class="card" id="prefsCard" style="display:none">
+      <h2 style="font-size:1.1rem">2 · Preferences</h2>
+      <label>Interests</label>
+      <div class="row" id="interestPills"></div>
+      <hr class="hair">
+      <div class="grid">
+        <div><label>Preferred travel mode</label>
+          <select id="prefMode"><option value="walking">Walking</option><option value="cycling">Cycling</option>
+          <option value="driving">Driving</option><option value="public_transport">Public transport</option></select>
+        </div>
+        <div><label>Available time today (minutes)</label><input type="number" id="prefTime" value="180" min="30" step="15"></div>
+        <div><label>Sustainability preference: <span id="prefSustVal" class="mono">0.5</span></label>
+          <input type="range" id="prefSust" min="0" max="1" step="0.05" value="0.5"></div>
+        <div><label>Budget</label>
+          <select id="prefBudget"><option value="3">No limit</option><option value="2">Medium</option><option value="1">Low</option><option value="0">Free only</option></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:.7rem"><button class="btn alt" id="btnSavePrefs">Save preferences & find my location</button>
+        <span class="small" id="geoStatus"></span></div>
+    </div>
+  </section>
+
+  <section class="tab" data-tab="discover">
+    <h2>Recommended for you</h2>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" id="ctxSummary" class="small mono"></div>
+        <button class="btn ghost" id="btnRefreshCtx">↻ Refresh location & weather</button>
+      </div>
+    </div>
+    <div class="grid" id="recoList"></div>
+  </section>
+
+  <section class="tab" data-tab="map">
+    <h2>Map & routing</h2>
+    <div class="card">
+      <div class="map-controls">
+        <div><label>Route to</label>
+          <select id="routeTarget"><option value="">— choose a destination —</option></select></div>
+        <div><label>Travel mode</label>
+          <select id="routeMode"><option value="walking">Walking</option><option value="cycling">Cycling</option><option value="driving">Driving</option></select></div>
+        <button class="btn" id="btnRoute">Calculate route</button>
+        <span class="small mono" id="routeResult"></span>
+      </div>
+      <div id="mapview"></div>
+    </div>
+  </section>
+
+  <section class="tab" data-tab="gems">
+    <h2>Hidden gems</h2>
+    <p class="small">Ranked by local/community relevance and sustainability, weighted toward lower-visibility spots — the kind a search engine wouldn't surface first.</p>
+    <div class="grid" id="gemList"></div>
+  </section>
+
+  <section class="tab" data-tab="itinerary">
+    <h2>Build a same-day itinerary</h2>
+    <div class="card">
+      <div class="grid">
+        <div><label>Available time (minutes)</label><input type="number" id="itinTime" value="240" min="30" step="15"></div>
+        <div><label>Travel mode</label><select id="itinMode"><option value="walking">Walking</option><option value="cycling">Cycling</option><option value="driving">Driving</option></select></div>
+        <div><label>Budget</label><select id="itinBudget"><option value="3">No limit</option><option value="2">Medium</option><option value="1">Low</option><option value="0">Free only</option></select></div>
+      </div>
+      <label style="margin-top:.6rem">Interests for this trip</label>
+      <div class="row" id="itinInterests"></div>
+      <div class="row" style="margin-top:.7rem"><button class="btn alt" id="btnBuildItin">Generate itinerary</button></div>
+    </div>
+    <div id="itinResult"></div>
+  </section>
+
+  <section class="tab" data-tab="ar">
+    <h2>WebAR navigation</h2>
+    <p class="small">Compass-and-GPS AR: markers are placed using the real bearing from you to each place and track live as you move — same nearby-places data as the Map tab. On a phone, allow camera + motion access. On desktop, use the simulated heading slider.</p>
+    <div class="card">
+      <div class="row"><button class="btn" id="btnStartAR">Start AR view</button>
+        <span id="arSimWrap" style="display:none" class="row"><label style="margin:0">Simulated heading</label>
+          <input type="range" id="arSimHeading" min="0" max="359" value="0" style="width:160px"><span class="mono" id="arSimVal">0°</span></span>
+      </div>
+      <div class="ar-stage" id="arStage" style="margin-top:.8rem">
+        <video id="arVideo" autoplay playsinline muted></video>
+        <div class="ar-layer" id="arLayer"></div>
+        <div class="ar-hud"><span id="arHudHeading">heading —</span><span id="arHudLoc">lat, lng —</span></div>
+        <svg class="ar-needle" viewBox="0 0 60 60" id="arNeedle"><circle cx="30" cy="30" r="26" fill="rgba(255,255,255,.15)" stroke="#fff" stroke-width="1"/>
+          <path d="M30 8 L36 32 L30 56 L24 32 Z" fill="#E3A23C"/></svg>
+        <div class="ar-banner" id="arBanner" style="display:none"></div>
+      </div>
+      <p class="small" style="margin-top:.6rem">Map view is always available as a fallback if AR isn't supported on this device — see the <b>Map</b> tab.</p>
+    </div>
+  </section>
+
+  <section class="tab" data-tab="admin">
+    <h2>Admin</h2>
+    <div class="grid" id="adminStats"></div>
+    <div class="card">
+      <h3 style="font-size:1rem">Add place / business</h3>
+      <div class="grid">
+        <div><label>Type</label><select id="admType"><option value="place">Tourist place</option><option value="business">Local business</option></select></div>
+        <div><label>Name</label><input type="text" id="admName"></div>
+        <div><label>Category</label><select id="admCat"><option>Nature</option><option>Food</option><option>Culture</option><option>Shopping</option><option>History</option></select></div>
+        <div><label>Latitude</label><input type="number" step="0.0001" id="admLat" value="11.0168"></div>
+        <div><label>Longitude</label><input type="number" step="0.0001" id="admLng" value="76.9558"></div>
+        <div><label>Opens / closes</label><div class="row"><input type="text" id="admOpen" value="09:00" style="width:80px"><input type="text" id="admClose" value="18:00" style="width:80px"></div></div>
+        <div><label>Visit duration (min)</label><input type="number" id="admDur" value="45"></div>
+        <div><label>Cost level</label><select id="admCost"><option value="0">Free</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></div>
+      </div>
+      <div class="row" style="margin-top:.6rem"><button class="btn alt" id="btnAddItem">Add</button></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Category</th><th>Rating</th><th>Sustainability</th><th>Verified</th><th></th></tr></thead>
+        <tbody id="admTableBody"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="font-size:1rem">Diagnostics</h3>
+      <p class="small">What the app can currently see about your browser and its last data fetches — check this first if something looks wrong.</p>
+      <table id="diagTable"><tbody></tbody></table>
+    </div>
+  </section>
+
+</main>
+
+<footer class="note">Demo data models User, UserPreference, TouristPlace, LocalBusiness, Review, Recommendation and RecommendationFeedback in-memory — in production these map directly to the MongoDB collections in the project spec. Tourist places via Wikipedia GeoSearch when located · local businesses are always platform data (spec FR3) · map tiles © OpenStreetMap contributors · routing via OSRM demo server · weather via Open-Meteo.</footer>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+'use strict';
+
+/* ---------- seed data (stands in for MongoDB collections) ---------- */
+const CATEGORIES = ['Nature','Food','Culture','Shopping','History'];
+const CAT_ICON = {Nature:'🌿',Food:'🍛',Culture:'🎭',Shopping:'🧵',History:'🏛️'};
+const COST_LABEL = ['Free','Low','Medium','High'];
+
+const SEED_PLACES = [
+  {id:'p1', kind:'place', name:'Marudamalai Murugan Temple', category:['Culture','History','Nature'],
+   lat:11.0733, lng:76.8845, desc:'Hilltop temple with forested slopes and panoramic views over the city.',
+   open:'05:30', close:'20:30', visitDurationMin:90, outdoor:true, timeSensitive:true,
+   sustainability:0.65, rating:4.6, ratingCount:1180, popularity:0.9, localRelevance:0.6, costLevel:1, verified:true, reviews:[]},
+  {id:'p2', kind:'place', name:'Perur Pateeswarar Temple', category:['Culture','History'],
+   lat:10.9770, lng:76.9098, desc:'Chola-era Shiva temple known for its Dravidian architecture and carved pillars.',
+   open:'06:00', close:'20:00', visitDurationMin:60, outdoor:false, timeSensitive:false,
+   sustainability:0.7, rating:4.7, ratingCount:960, popularity:0.7, localRelevance:0.65, costLevel:0, verified:true, reviews:[]},
+  {id:'p3', kind:'place', name:'Dhyanalinga, Isha Yoga Center', category:['Culture','Nature'],
+   lat:11.0294, lng:76.7539, desc:'Meditative space and gardens at the foothills of the Velliangiri mountains.',
+   open:'06:00', close:'20:00', visitDurationMin:120, outdoor:true, timeSensitive:false,
+   sustainability:0.75, rating:4.8, ratingCount:2100, popularity:0.75, localRelevance:0.55, costLevel:0, verified:true, reviews:[]},
+  {id:'p4', kind:'place', name:'Kovai Kutralam Falls', category:['Nature'],
+   lat:11.1699, lng:76.8330, desc:'Seasonal forest waterfall on the way to Siruvani, popular for a short trek.',
+   open:'08:00', close:'17:30', visitDurationMin:100, outdoor:true, timeSensitive:true,
+   sustainability:0.55, rating:4.3, ratingCount:540, popularity:0.55, localRelevance:0.7, costLevel:1, verified:true, reviews:[]},
+  {id:'p5', kind:'place', name:'Gass Forest Museum', category:['Nature','History'],
+   lat:11.0026, lng:76.9622, desc:'Quiet natural-history museum with forestry and taxidermy exhibits — easy to miss.',
+   open:'09:00', close:'17:00', visitDurationMin:45, outdoor:false, timeSensitive:false,
+   sustainability:0.5, rating:4.1, ratingCount:120, popularity:0.25, localRelevance:0.8, costLevel:1, verified:true, reviews:[]},
+  {id:'p6', kind:'place', name:'VOC Park & Zoo', category:['Nature','Culture'],
+   lat:11.0018, lng:76.9629, desc:'Park with a small zoo and musical fountain — a popular evening walk.',
+   open:'09:00', close:'18:00', visitDurationMin:75, outdoor:true, timeSensitive:true,
+   sustainability:0.45, rating:4.2, ratingCount:2400, popularity:0.8, localRelevance:0.5, costLevel:1, verified:true, reviews:[]},
+];
+
+const SEED_BUSINESSES = [
+  {id:'b1', kind:'business', name:"Kovai Handloom Collective", category:['Shopping','Culture'],
+   lat:11.0050, lng:76.9560, desc:'Weaver cooperative selling handwoven cotton and silk direct from artisans.',
+   open:'10:00', close:'20:00', visitDurationMin:40, outdoor:false, timeSensitive:false,
+   sustainability:0.85, rating:4.5, ratingCount:64, popularity:0.3, localRelevance:0.9, costLevel:2, verified:true,
+   services:['Handwoven sarees','Cotton yardage','Natural-dye scarves'], reviews:[]},
+  {id:'b2', kind:'business', name:"Amma's Thatched Kitchen", category:['Food'],
+   lat:10.9950, lng:76.9480, desc:'Home-style Kongunadu thali on banana leaf; vegetables sourced from the family farm.',
+   open:'11:30', close:'22:00', visitDurationMin:50, outdoor:false, timeSensitive:false,
+   sustainability:0.8, rating:4.6, ratingCount:210, popularity:0.35, localRelevance:0.85, costLevel:1, verified:true,
+   services:['Banana-leaf thali','Filter coffee','Kongu-style curries'], reviews:[]},
+  {id:'b3', kind:'business', name:'Sungudi Silk Weavers', category:['Shopping','Culture'],
+   lat:11.0400, lng:76.9700, desc:'Small-batch tie-dye Sungudi cotton sarees, no online storefront — added directly to the platform.',
+   open:'10:00', close:'19:00', visitDurationMin:30, outdoor:false, timeSensitive:false,
+   sustainability:0.8, rating:4.4, ratingCount:22, popularity:0.2, localRelevance:0.9, costLevel:2, verified:false,
+   services:['Sungudi sarees','Tie-dye dupattas'], reviews:[]},
+  {id:'b4', kind:'business', name:'Green Valley Farm Stall', category:['Food','Nature'],
+   lat:11.0600, lng:76.8600, desc:'Roadside organic produce and cold-pressed oils, run by a smallholder family.',
+   open:'07:00', close:'19:00', visitDurationMin:20, outdoor:true, timeSensitive:false,
+   sustainability:0.9, rating:4.3, ratingCount:38, popularity:0.15, localRelevance:0.95, costLevel:1, verified:true,
+   services:['Organic produce','Cold-pressed groundnut oil','Millet snacks'], reviews:[]},
+  {id:'b5', kind:'business', name:'Thottam Herbal Store', category:['Shopping'],
+   lat:11.0100, lng:76.9400, desc:'Three-generation family apothecary for Siddha herbal remedies and oils.',
+   open:'09:30', close:'20:30', visitDurationMin:25, outdoor:false, timeSensitive:false,
+   sustainability:0.7, rating:4.2, ratingCount:57, popularity:0.4, localRelevance:0.75, costLevel:1, verified:true,
+   services:['Herbal oils','Siddha remedies','Handmade soaps'], reviews:[]},
+  {id:'b6', kind:'business', name:'Kolam Art Studio', category:['Culture'],
+   lat:10.9900, lng:76.9650, desc:'Drop-in workshop teaching traditional kolam floor art, run by a local artist.',
+   open:'10:00', close:'18:00', visitDurationMin:60, outdoor:false, timeSensitive:false,
+   sustainability:0.75, rating:4.7, ratingCount:19, popularity:0.1, localRelevance:0.9, costLevel:2, verified:false,
+   services:['Kolam workshop (1hr)','Take-home kolam kit'], reviews:[]},
+];
+
+let places = SEED_PLACES.slice();
+let businesses = SEED_BUSINESSES.slice();
+let dataSource = 'demo'; // 'demo' | 'live' — tourist PLACES only; businesses are always platform data
+let adminAdded = [];       // items added via Admin — survive a location refresh
+let deletedIds = new Set(); // items removed via Admin — stay removed across refreshes
+function useSeedPlaces(){
+  places = SEED_PLACES.slice().filter(i=>!deletedIds.has(i.id)).concat(adminAdded.filter(i=>i.kind==='place'));
+  dataSource = 'demo';
+}
+function refreshBusinessesFromPlatform(){
+  // Per the spec's FR3, local businesses live in the platform's own database, not an external API —
+  // so this always runs, regardless of whether live places lookup succeeds.
+  businesses = SEED_BUSINESSES.slice().filter(i=>!deletedIds.has(i.id)).concat(adminAdded.filter(i=>i.kind==='business'));
+}
+
+function allItems(){ return places.concat(businesses); }
+function findItem(id){ return allItems().find(i=>i.id===id); }
+
+/* ---------- session / context state ---------- */
+let session = {loggedIn:false, name:'', prefs:{interests:[], mode:'walking', time:180, sustainability:0.5, budget:3}};
+let context = {lat:11.0168, lng:76.9558, locSource:'default', weather:null, now:new Date(),
+  locAttempted:false, lastPlacesError:null, lastWeatherError:null};
+let weights = {preference:25, proximity:20, context:10, sustainability:15, rating:15, localRelevance:10, availability:5};
+
+/* ---------- geometry helpers ---------- */
+function haversineKm(lat1,lng1,lat2,lng2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function bearingDeg(lat1,lng1,lat2,lng2){
+  const toRad=d=>d*Math.PI/180, toDeg=r=>r*180/Math.PI;
+  const y=Math.sin(toRad(lng2-lng1))*Math.cos(toRad(lat2));
+  const x=Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) - Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lng2-lng1));
+  return (toDeg(Math.atan2(y,x))+360)%360;
+}
+function minutesNow(d){ return d.getHours()*60+d.getMinutes(); }
+function toMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function isOpenAt(item, date){
+  const m = minutesNow(date);
+  return m >= toMin(item.open) && m <= toMin(item.close);
+}
+function opensLaterToday(item, date){
+  return minutesNow(date) < toMin(item.open);
+}
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
+function pseudoRand(id){ return (hashStr(id)%1000)/1000; }
+
+/* ---------- live nearby tourist places via Wikipedia GeoSearch ----------
+   Wikipedia's API has documented, reliable anonymous CORS support (origin=*),
+   unlike the public Overpass (OpenStreetMap) mirrors, which frequently omit
+   Access-Control-Allow-Origin entirely — a known, long-standing issue on their
+   end, not something fixable from this app. This trades OSM's shops/cafes for
+   Wikipedia's notable landmarks, which also happens to fit tourist PLACES better. */
+function classifyFromText(title, extract){
+  const t = (title+' '+extract).toLowerCase();
+  const cats = new Set();
+  if(/temple|church|mosque|cathedral|shrine|fort|palace|monument|heritage|museum|ruins|tomb|memorial|dynasty|colonial|built in|century/.test(t)) cats.add('History');
+  if(/festival|tradition|craft|dance|music|folklore|cultural|art gallery/.test(t)) cats.add('Culture');
+  if(/park|forest|lake|river|waterfall|hill|mountain|garden|wildlife|sanctuary|reserve|beach|valley|peak|zoo/.test(t)) cats.add('Nature');
+  if(/market|bazaar|mall/.test(t)) cats.add('Shopping');
+  if(!cats.size) cats.add('Culture');
+  return Array.from(cats);
+}
+function wikiToItem(page){
+  if(!page.title || !page.coordinates || !page.coordinates.length) return null;
+  const lat = page.coordinates[0].lat, lng = page.coordinates[0].lon;
+  const extract = (page.extract||'').replace(/\s+/g,' ').trim();
+  const category = classifyFromText(page.title, extract);
+  const outdoor = category.includes('Nature');
+  const id = 'wiki'+page.pageid;
+  const r = pseudoRand(id);
+  return {
+    id, kind:'place', name: page.title, category, lat, lng,
+    desc: extract ? (extract.length>200 ? extract.slice(0,200)+'…' : extract) : 'A notable nearby place, via Wikipedia.',
+    open:'08:00', close:'18:00',
+    visitDurationMin: outdoor?75:45, outdoor, timeSensitive: outdoor,
+    sustainability: 0.55+r*0.2,
+    rating: Math.round((3.9+r*0.9)*10)/10, ratingCount:0,
+    popularity: 0.55+r*0.3,
+    localRelevance: 0.4+r*0.25,
+    costLevel: (outdoor||category.includes('History')) ? 0 : 1,
+    verified:true, reviews:[], source:'wikipedia'
+  };
+}
+async function fetchNearbyWiki(lat,lng,radius){
+  radius = Math.min(radius||8000, 10000); // Wikipedia geosearch caps at 10km
+  const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&generator=geosearch&ggscoord=${lat}%7C${lng}&ggsradius=${radius}&ggslimit=30&prop=extracts%7Ccoordinates&exintro=1&explaintext=1&exchars=220&origin=*`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), 9000);
+  try{
+    const res = await fetch(url, {signal: ctrl.signal});
+    clearTimeout(timer);
+    if(!res.ok) throw new Error('Wikipedia responded HTTP '+res.status);
+    const data = await res.json();
+    const pages = (data.query && data.query.pages) || [];
+    const items = pages.map(wikiToItem).filter(Boolean)
+      .filter(it=>!deletedIds.has(it.id))
+      .map(it=>{ it._d = haversineKm(lat,lng,it.lat,it.lng); return it; })
+      .sort((a,b)=>a._d-b._d).slice(0,20);
+    if(!items.length) throw new Error(`No nearby Wikipedia-listed places within ${(radius/1000).toFixed(0)}km`);
+    return items;
+  }catch(e){
+    clearTimeout(timer);
+    throw e.name==='AbortError' ? new Error('Wikipedia geosearch timed out (9s)') : e;
+  }
+}
+
+/* ---------- S-CADE scoring ---------- */
+function scorePreference(item){
+  const ints = session.prefs.interests;
+  if(!ints.length) return 0.5;
+  const overlap = item.category.filter(c=>ints.includes(c)).length;
+  return Math.min(1, 0.25 + 0.35*overlap);
+}
+function scoreProximity(item){
+  const d = haversineKm(context.lat, context.lng, item.lat, item.lng);
+  return {score:Math.max(0, 1 - d/15), dist:d};
+}
+function scoreContext(item){
+  let weatherComp = 0.85;
+  if(context.weather && item.outdoor){
+    weatherComp = context.weather.rainy ? 0.3 : 0.95;
+  }
+  let hour = context.now.getHours();
+  let timeComp = 0.7;
+  if(item.timeSensitive){
+    timeComp = ((hour>=6&&hour<=10)||(hour>=16&&hour<=19)) ? 1 : 0.45;
+  }
+  return 0.6*weatherComp + 0.4*timeComp;
+}
+function scoreAvailability(item){
+  if(isOpenAt(item, context.now)) return 1;
+  if(opensLaterToday(item, context.now)) return 0.4;
+  return 0.1;
+}
+function computeSCADE(item){
+  const pref = scorePreference(item);
+  const prox = scoreProximity(item);
+  const ctx = scoreContext(item);
+  const sust = item.sustainability;
+  const rate = item.rating/5;
+  const local = item.localRelevance;
+  const avail = scoreAvailability(item);
+  const contrib = {
+    preference: pref*weights.preference,
+    proximity: prox.score*weights.proximity,
+    context: ctx*weights.context,
+    sustainability: sust*weights.sustainability,
+    rating: rate*weights.rating,
+    localRelevance: local*weights.localRelevance,
+    availability: avail*weights.availability,
+  };
+  const total = Object.values(contrib).reduce((a,b)=>a+b,0);
+  const maxTotal = Object.values(weights).reduce((a,b)=>a+b,0);
+  return {total, pct: Math.round(100*total/maxTotal), contrib, dist:prox.dist,
+    matchedInterests: item.category.filter(c=>session.prefs.interests.includes(c))};
+}
+function explain(item, res){
+  const parts = Object.entries(res.contrib).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>{
+    if(k==='preference') return res.matchedInterests.length ? `matches your interest in ${res.matchedInterests[0]}` : 'broadly matches your profile';
+    if(k==='proximity') return `${res.dist.toFixed(1)} km away`;
+    if(k==='context') return context.weather ? `good conditions right now (${context.weather.tempC}°C${context.weather.rainy?', rainy':''})` : 'favourable timing';
+    if(k==='sustainability') return 'strong sustainability score';
+    if(k==='rating') return `rated ${item.rating}★`;
+    if(k==='localRelevance') return 'high community relevance';
+    if(k==='availability') return isOpenAt(item, context.now) ? 'open now' : 'opens later today';
+  });
+  return 'Recommended because: ' + parts.join(' · ');
+}
+
+/* ---------- toast ---------- */
+function toast(msg){
+  const el = document.createElement('div'); el.className='toast'; el.textContent=msg;
+  document.getElementById('toastWrap').appendChild(el);
+  setTimeout(()=>el.remove(), 3600);
+}
+
+/* ---------- tabs ---------- */
+const TABS = [
+  {id:'onboard', label:'Start'}, {id:'discover', label:'Discover'}, {id:'map', label:'Map'},
+  {id:'gems', label:'Hidden gems'}, {id:'itinerary', label:'Itinerary'}, {id:'ar', label:'AR'}, {id:'admin', label:'Admin'}
+];
+function renderNav(){
+  const nav = document.getElementById('tabnav'); nav.innerHTML='';
+  TABS.forEach(t=>{
+    const b = document.createElement('button');
+    b.textContent = t.label; b.dataset.tab = t.id;
+    b.onclick = ()=> showTab(t.id);
+    nav.appendChild(b);
+  });
+}
+function showTab(id){
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('active', s.dataset.tab===id));
+  document.querySelectorAll('#tabnav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===id));
+  if(id!=='ar' && arWatchId!=null){ navigator.geolocation.clearWatch(arWatchId); arWatchId=null; }
+  if(id==='discover') renderRecommendations();
+  if(id==='gems') renderGems();
+  if(id==='map') initMapIfNeeded();
+  if(id==='admin') renderAdmin();
+}
+
+/* ---------- onboarding ---------- */
+function renderInterestPills(container, selected){
+  container.innerHTML='';
+  CATEGORIES.forEach(cat=>{
+    const p = document.createElement('span');
+    p.className = 'pill select' + (selected.includes(cat)?' on':'');
+    p.textContent = (CAT_ICON[cat]||'') + ' ' + cat;
+    p.onclick = ()=>{
+      const i = selected.indexOf(cat);
+      if(i>-1) selected.splice(i,1); else selected.push(cat);
+      renderInterestPills(container, selected);
+    };
+    container.appendChild(p);
+  });
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderNav();
+  renderStatusBanner();
+  renderInterestPills(document.getElementById('interestPills'), session.prefs.interests);
+  renderInterestPills(document.getElementById('itinInterests'), []);
+  showTab('onboard');
+
+  document.getElementById('btnSignIn').onclick = ()=>{
+    const name = document.getElementById('regName').value.trim() || 'Guest';
+    session.loggedIn = true; session.name = name;
+    document.getElementById('userChip').textContent = 'signed in as ' + name;
+    document.getElementById('prefsCard').style.display='block';
+    toast('Signed in as ' + name);
+  };
+
+  document.getElementById('prefSust').oninput = e=>{ document.getElementById('prefSustVal').textContent = e.target.value; };
+
+  document.getElementById('btnSavePrefs').onclick = async ()=>{
+    session.prefs.mode = document.getElementById('prefMode').value;
+    session.prefs.time = Number(document.getElementById('prefTime').value)||180;
+    session.prefs.sustainability = Number(document.getElementById('prefSust').value);
+    session.prefs.budget = Number(document.getElementById('prefBudget').value);
+    await refreshContext();
+    populateRouteTargets();
+    showTab('discover');
+  };
+  document.getElementById('btnRefreshCtx').onclick = refreshContext;
+
+  document.getElementById('btnRoute').onclick = calculateRoute;
+  document.getElementById('btnBuildItin').onclick = buildItinerary;
+  document.getElementById('btnStartAR').onclick = startAR;
+  document.getElementById('arSimHeading').oninput = e=>{
+    deviceHeading = Number(e.target.value);
+    document.getElementById('arSimVal').textContent = deviceHeading+'°';
+    renderARMarkers();
+  };
+  document.getElementById('btnAddItem').onclick = adminAddItem;
+  document.getElementById('modalBg').onclick = e=>{ if(e.target.id==='modalBg') closeModal(); };
+});
+
+/* ---------- geolocation + weather context ---------- */
+async function refreshContext(){
+  context.locAttempted = true;
+  renderStatusBanner(true);
+  document.getElementById('geoStatus').textContent = 'Locating…';
+  await new Promise(resolve=>{
+    if(!navigator.geolocation){ context.locSource='unsupported'; resolve(); return; }
+    navigator.geolocation.getCurrentPosition(pos=>{
+      context.lat = pos.coords.latitude; context.lng = pos.coords.longitude; context.locSource='gps';
+      resolve();
+    }, err=>{ context.locSource='denied:'+err.message; resolve(); }, {timeout:8000});
+  });
+  context.now = new Date();
+  const statusEl = document.getElementById('geoStatus');
+  statusEl.textContent = context.locSource==='gps' ? 'Location found.' : 'Using approximate default location (Coimbatore centre) — location unavailable.';
+
+  try{
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${context.lat}&longitude=${context.lng}&current_weather=true`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const code = data.current_weather.weathercode;
+    const rainyCodes = [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99];
+    context.weather = {tempC: Math.round(data.current_weather.temperature), code, rainy: rainyCodes.includes(code)};
+    context.lastWeatherError = null;
+  }catch(e){
+    context.weather = null;
+    context.lastWeatherError = e.message;
+    toast('Weather API unavailable — continuing without live weather context.');
+  }
+
+  refreshBusinessesFromPlatform(); // local businesses are always platform data (spec FR3) — never overwritten by a live lookup
+
+  if(context.locSource==='gps'){
+    statusEl.textContent = 'Location found — looking for real nearby places…';
+    try{
+      const nearby = await fetchNearbyWiki(context.lat, context.lng);
+      places = nearby.concat(adminAdded.filter(i=>i.kind==='place'));
+      dataSource = 'live';
+      context.lastPlacesError = null;
+      toast(`Loaded ${nearby.length} real nearby places from Wikipedia.`);
+    }catch(e){
+      useSeedPlaces();
+      context.lastPlacesError = e.message;
+      toast('Live places lookup failed — showing demo tourist places instead.');
+    }
+  } else {
+    useSeedPlaces();
+  }
+
+  populateRouteTargets();
+  renderCtxSummary();
+  renderStatusBanner();
+  renderRecommendations();
+  renderGems();
+  renderAdmin();
+  if(document.getElementById('mapview')._leaflet_id) placeMapMarkers();
+  if(arActive) renderARMarkers();
+}
+function renderCtxSummary(){
+  const el = document.getElementById('ctxSummary');
+  el.innerHTML = `<span class="pill">📍 ${context.lat.toFixed(4)}, ${context.lng.toFixed(4)} (${context.locSource})</span>
+    <span class="pill">🕒 ${context.now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+    <span class="pill">${context.weather ? '☁️ '+context.weather.tempC+'°C'+(context.weather.rainy?' · rainy':' · clear/cloudy') : '☁️ weather unavailable'}</span>`;
+}
+function renderStatusBanner(loading){
+  const el = document.getElementById('statusBanner');
+  let html = '';
+  if(location.protocol === 'file:'){
+    html += `<div class="bar error"><span>📁 This page is open directly from disk (file://). Some browsers block outside API calls from local files — if live data keeps failing below, serve this file from a local server (e.g. <code>npx serve .</code> or VS Code's "Live Server") or host it online, then reload.</span></div>`;
+  }
+  if(loading){
+    html += `<div class="bar loading"><span>⏳ Locating you and checking live data…</span></div>`;
+    el.innerHTML = html;
+    return;
+  }
+  let cls='loading', icon='🧭', msg='Location not checked yet.', btnLabel='Locate me';
+  if(context.locAttempted){
+    btnLabel = 'Retry live data';
+    if(dataSource==='live'){
+      cls='live'; icon='📡';
+      msg = `Live: ${places.length} real nearby places from Wikipedia near ${context.lat.toFixed(4)}, ${context.lng.toFixed(4)} · ${businesses.length} local businesses from your platform data.`;
+    } else if(context.locSource && context.locSource.startsWith('denied')){
+      cls='error'; icon='🚫'; msg='Location permission was denied, so tourist places default to Coimbatore demo data. Allow location access in your browser, then retry.';
+    } else if(context.locSource==='unsupported'){
+      cls='error'; icon='🚫'; msg='This browser does not support geolocation — showing demo places.';
+    } else {
+      cls='demo'; icon='⚠️';
+      msg = `Showing demo tourist places — live lookup failed${context.lastPlacesError ? ': '+context.lastPlacesError : ''}. (Local businesses are always platform data, per the spec's FR3 — that's normal, not a failure.)`;
+    }
+  }
+  html += `<div class="bar ${cls}"><span>${icon} ${msg}</span><button class="btn ghost" id="btnRetryLive">${btnLabel}</button></div>`;
+  el.innerHTML = html;
+  document.getElementById('btnRetryLive').onclick = refreshContext;
+}
+function renderDiagnostics(){
+  const t = document.getElementById('diagTable');
+  if(!t) return;
+  const rows = [
+    ['Page protocol', location.protocol + (location.protocol==='file:' ? ' — open via http:// or a local server for full API access' : ' ✅')],
+    ['Location source', context.locSource + (context.locSource==='gps' ? ' ✅' : '')],
+    ['Coordinates in use', context.lat.toFixed(5)+', '+context.lng.toFixed(5)],
+    ['Tourist places source', dataSource + (dataSource==='live' ? ' ✅ (Wikipedia GeoSearch)' : ' — demo fallback')],
+    ['Last live-places error', context.lastPlacesError || '—'],
+    ['Local businesses source', 'platform data (seed + admin-added) — always, by design'],
+    ['Weather', context.weather ? `${context.weather.tempC}°C ✅` : ('unavailable' + (context.lastWeatherError ? ' — '+context.lastWeatherError : ''))],
+    ['Items currently loaded', `${places.length+businesses.length} (${places.length} places, ${businesses.length} businesses)`],
+    ['Geolocation API', navigator.geolocation ? 'supported ✅' : 'not supported ⚠️'],
+    ['Camera API', (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? 'supported ✅' : 'not supported ⚠️'],
+    ['Device orientation', (typeof DeviceOrientationEvent!=='undefined') ? 'supported ✅' : 'not supported ⚠️'],
+  ];
+  t.innerHTML = '<tbody>'+rows.map(r=>`<tr><td style="font-weight:600;white-space:nowrap">${r[0]}</td><td class="mono">${r[1]}</td></tr>`).join('')+'</tbody>';
+}
+
+/* ---------- discover / recommendations ---------- */
+function renderRecommendations(){
+  const list = document.getElementById('recoList'); list.innerHTML='';
+  renderCtxSummary();
+  const scored = allItems().map(it=>({it, res:computeSCADE(it)})).sort((a,b)=>b.res.total-a.res.total);
+  scored.forEach(({it,res})=> list.appendChild(itemCard(it,res)));
+}
+function itemCard(it, res){
+  const div = document.createElement('div'); div.className='item';
+  const open = isOpenAt(it, context.now);
+  div.innerHTML = `
+    <div class="top">
+      <div><span class="icon-chip">${CAT_ICON[it.category[0]]||'📍'}</span> <h3 style="display:inline">${it.name}</h3></div>
+      <span class="badge ${open?'open':'closed'}">${open?'Open now':'Closed'}</span>
+    </div>
+    <div class="small">${it.desc}</div>
+    <div class="row small">${it.category.map(c=>`<span class="pill">${c}</span>`).join('')}
+      <span class="pill">${'★'.repeat(Math.round(it.rating))} ${it.rating}</span>
+      <span class="pill">${COST_LABEL[it.costLevel]}</span></div>
+    <div class="score-bar"><span style="width:${res.pct}%"></span></div>
+    <div class="why">${explain(it,res)} · match ${res.pct}%</div>
+    <div class="actions">
+      <button class="btn ghost" data-act="detail">Details & reviews</button>
+      <button class="btn ghost" data-act="map">Show on map</button>
+    </div>`;
+  div.querySelector('[data-act=detail]').onclick = ()=>openDetail(it);
+  div.querySelector('[data-act=map]').onclick = ()=>{ showTab('map'); document.getElementById('routeTarget').value = it.id; focusMapOn(it); };
+  return div;
+}
+
+/* ---------- hidden gems ---------- */
+function renderGems(){
+  const list = document.getElementById('gemList'); list.innerHTML='';
+  const gems = allItems()
+    .map(it=>({it, gem: (1-it.popularity)*0.5 + it.localRelevance*0.3 + it.sustainability*0.2}))
+    .filter(x=>x.it.popularity < 0.45)
+    .sort((a,b)=>b.gem-a.gem);
+  gems.forEach(({it,gem})=>{
+    const res = computeSCADE(it);
+    const card = itemCard(it, res);
+    card.querySelector('.why').textContent = `Hidden-gem score ${(gem*100).toFixed(0)}% · low visibility, high local relevance & sustainability`;
+    list.appendChild(card);
+  });
+  if(!gems.length) list.innerHTML = '<p class="small">No hidden gems match right now — try widening interests.</p>';
+}
+
+/* ---------- item detail modal + reviews ---------- */
+function openDetail(it){
+  const res = computeSCADE(it);
+  const modal = document.getElementById('modalBody');
+  modal.innerHTML = `
+    <button class="close" onclick="closeModal()">&times;</button>
+    <div class="eyebrow">${it.kind==='place'?'Tourist place':'Local business'}${it.verified===false?' · unverified':''}</div>
+    <h2>${it.name}</h2>
+    <p class="small">${it.desc}</p>
+    <div class="row small">${it.category.map(c=>`<span class="pill">${c}</span>`).join('')}
+      <span class="pill">Open ${it.open}–${it.close}</span><span class="pill">${it.visitDurationMin} min visit</span>
+      <span class="pill">${COST_LABEL[it.costLevel]}</span></div>
+    ${it.services ? `<p class="small"><b>Offers:</b> ${it.services.join(', ')}</p>` : ''}
+    <div class="row small" style="margin-top:.4rem">
+      <span class="pill">Sustainability ${(it.sustainability*100).toFixed(0)}%</span>
+      <span class="pill">Local relevance ${(it.localRelevance*100).toFixed(0)}%</span>
+      <span class="pill">S-CADE match ${res.pct}%</span></div>
+    <div class="row" style="margin-top:.5rem">
+      <button class="btn ghost" id="dtMap">Show on map</button>
+      <button class="btn alt" id="dtRoute">Get directions</button>
+    </div>
+    <hr class="hair">
+    <h3 style="font-size:.95rem">Reviews (${it.reviews.length}, avg ${it.rating})</h3>
+    <div id="reviewList"></div>
+    <div class="row" style="margin-top:.5rem">
+      <select id="rvRating"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+      <input type="text" id="rvComment" placeholder="Add a review…" style="flex:1;min-width:160px">
+      <button class="btn" id="rvSubmit">Post</button>
+    </div>`;
+  renderReviews(it);
+  modal.querySelector('#dtMap').onclick = ()=>{ closeModal(); showTab('map'); document.getElementById('routeTarget').value = it.id; focusMapOn(it); };
+  modal.querySelector('#dtRoute').onclick = ()=>{ closeModal(); showTab('map'); document.getElementById('routeTarget').value = it.id; calculateRoute(); };
+  modal.querySelector('#rvSubmit').onclick = ()=>{
+    const rating = Number(modal.querySelector('#rvRating').value);
+    const comment = modal.querySelector('#rvComment').value.trim();
+    if(!comment){ toast('Write a short comment first.'); return; }
+    it.reviews.push({id:'r'+Date.now(), author:session.name||'Guest', rating, comment, mine:true, date:new Date().toLocaleDateString()});
+    recalcRating(it);
+    openDetail(it);
+  };
+  document.getElementById('modalBg').classList.add('show');
+}
+function renderReviews(it){
+  const box = document.getElementById('reviewList'); box.innerHTML='';
+  if(!it.reviews.length){ box.innerHTML = '<p class="small">No reviews yet — be the first.</p>'; return; }
+  it.reviews.forEach(r=>{
+    const d = document.createElement('div'); d.className='review';
+    d.innerHTML = `<b>${r.author}</b> · ${'★'.repeat(r.rating)} <span class="small">${r.date}</span><br>${r.comment}
+      ${r.mine ? `<div class="row" style="margin-top:.2rem"><button class="btn ghost" data-e>Edit</button><button class="btn danger" data-d>Delete</button></div>`:''}`;
+    if(r.mine){
+      d.querySelector('[data-d]').onclick = ()=>{ it.reviews = it.reviews.filter(x=>x.id!==r.id); recalcRating(it); openDetail(it); };
+      d.querySelector('[data-e]').onclick = ()=>{
+        const nc = prompt('Edit your review', r.comment);
+        if(nc!==null && nc.trim()){ r.comment = nc.trim(); recalcRating(it); openDetail(it); }
+      };
+    }
+    box.appendChild(d);
+  });
+}
+function recalcRating(it){
+  if(!it.reviews.length) return;
+  const seedWeight = it.ratingCount;
+  const seedSum = it.rating*seedWeight;
+  const newSum = it.reviews.reduce((s,r)=>s+r.rating,0);
+  it.rating = Math.round(((seedSum+newSum)/(seedWeight+it.reviews.length))*10)/10;
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+
+/* ---------- map ---------- */
+let map, markerLayer;
+function initMapIfNeeded(){
+  const el = document.getElementById('mapview');
+  if(el._leaflet_id) { map.invalidateSize(); return; }
+  map = L.map(el).setView([context.lat, context.lng], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'&copy; OpenStreetMap contributors', maxZoom:19
+  }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+  placeMapMarkers();
+}
+function placeMapMarkers(){
+  markerLayer.clearLayers();
+  L.circleMarker([context.lat, context.lng], {radius:8, color:'#26433A', fillColor:'#E3A23C', fillOpacity:1})
+    .bindPopup('You are here').addTo(markerLayer);
+  allItems().forEach(it=>{
+    L.marker([it.lat,it.lng]).bindPopup(`<b>${it.name}</b><br>${it.category.join(', ')}<br>${it.rating}★<br>
+      <button onclick="openDetail(findItem('${it.id}'))" style="margin-top:4px;cursor:pointer">Details</button>`)
+      .addTo(markerLayer);
+  });
+}
+function focusMapOn(it){ initMapIfNeeded(); map.setView([it.lat,it.lng], 14); }
+function populateRouteTargets(){
+  const sel = document.getElementById('routeTarget');
+  sel.innerHTML = '<option value="">— choose a destination —</option>' +
+    allItems().map(it=>`<option value="${it.id}">${it.name}</option>`).join('');
+}
+let routeLine;
+async function calculateRoute(){
+  const id = document.getElementById('routeTarget').value;
+  if(!id){ toast('Pick a destination first.'); return; }
+  const it = findItem(id);
+  const mode = document.getElementById('routeMode').value;
+  const speed = {walking:4.5, cycling:15, driving:28}[mode];
+  const distKm = haversineKm(context.lat, context.lng, it.lat, it.lng);
+  const resultEl = document.getElementById('routeResult');
+  resultEl.textContent = 'Calculating…';
+  initMapIfNeeded();
+  if(routeLine) map.removeLayer(routeLine);
+  try{
+    const url = `https://router.project-osrm.org/route/v1/driving/${context.lng},${context.lat};${it.lng},${it.lat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.code!=='Ok') throw new Error('no route');
+    const coords = data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+    routeLine = L.polyline(coords, {color:'#A85C3E', weight:4}).addTo(map);
+    map.fitBounds(routeLine.getBounds(), {padding:[30,30]});
+    const etaMin = Math.round((distKm/speed)*60);
+    resultEl.textContent = `${distKm.toFixed(1)} km · ~${etaMin} min by ${mode} (route path via road network, ETA estimated for mode)`;
+  }catch(e){
+    routeLine = L.polyline([[context.lat,context.lng],[it.lat,it.lng]], {color:'#A85C3E', weight:3, dashArray:'6 8'}).addTo(map);
+    map.fitBounds(routeLine.getBounds(), {padding:[30,30]});
+    const etaMin = Math.round((distKm/speed)*60);
+    resultEl.textContent = `Routing API unavailable — showing straight-line estimate: ${distKm.toFixed(1)} km · ~${etaMin} min by ${mode}.`;
+  }
+}
+
+/* ---------- itinerary builder ---------- */
+function buildItinerary(){
+  const availableTime = Number(document.getElementById('itinTime').value)||240;
+  const mode = document.getElementById('itinMode').value;
+  const budget = Number(document.getElementById('itinBudget').value);
+  const interests = Array.from(document.getElementById('itinInterests').children)
+    .filter(p=>p.classList.contains('on')).map(p=>p.textContent.trim().replace(/^\S+\s/,''));
+  const speed = {walking:4.5, cycling:15, driving:28}[mode];
+
+  let candidates = allItems().filter(it => it.costLevel <= budget &&
+    (!interests.length || it.category.some(c=>interests.includes(c))));
+  candidates.forEach(it=> it._score = computeSCADE(it).total);
+  candidates.sort((a,b)=>b._score-a._score);
+
+  let remaining = availableTime, clock = new Date(context.now), lastLat=context.lat, lastLng=context.lng;
+  const itin = [];
+  for(const it of candidates){
+    const distKm = haversineKm(lastLat,lastLng,it.lat,it.lng);
+    const travelMin = Math.round((distKm/speed)*60);
+    const need = travelMin + it.visitDurationMin;
+    if(need > remaining) continue;
+    const arrival = new Date(clock.getTime()+travelMin*60000);
+    if(!isOpenAt(it, arrival) && !opensLaterToday(it, arrival)) continue;
+    itin.push({it, travelMin, arrival:new Date(arrival)});
+    remaining -= need;
+    clock = new Date(arrival.getTime()+it.visitDurationMin*60000);
+    lastLat=it.lat; lastLng=it.lng;
+    if(remaining < 15) break;
+  }
+  renderItinerary(itin, availableTime-remaining);
+}
+function renderItinerary(itin, used){
+  const box = document.getElementById('itinResult');
+  if(!itin.length){ box.innerHTML = '<div class="card small">No itinerary fits those constraints — try more time, a higher budget, or broader interests.</div>'; return; }
+  box.innerHTML = `<div class="card"><h3 style="font-size:1rem">Suggested route · ${itin.length} stops · ${used} min used</h3>` +
+    itin.map(s=>`<div class="itin-stop"><div class="itin-time">${s.arrival.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+      <div><b>${s.it.name}</b> <span class="small">(${s.it.visitDurationMin} min visit${s.travelMin?', '+s.travelMin+' min travel':''})</span>
+      <div class="small">${s.it.category.join(', ')} · ${COST_LABEL[s.it.costLevel]}</div></div></div>`).join('') + `</div>`;
+}
+
+/* ---------- WebAR ---------- */
+let deviceHeading = 0, arActive = false, receivedRealOrientation = false, arWatchId = null;
+async function startAR(){
+  const stage = document.getElementById('arStage'), video = document.getElementById('arVideo'), banner = document.getElementById('arBanner');
+  banner.style.display='none';
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+    video.srcObject = stream; video.style.display='block';
+  }catch(e){
+    video.style.display='none';
+    banner.style.display='block';
+    banner.textContent = 'Camera unavailable in this preview — showing a simulated sky background. Markers below still use your real location and bearing.';
+  }
+  let gotOrientation = false;
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    try{
+      const resp = await DeviceOrientationEvent.requestPermission();
+      if(resp === 'granted') gotOrientation = true;
+    }catch(e){ /* fall through to simulated heading */ }
+  } else if (typeof DeviceOrientationEvent !== 'undefined'){
+    gotOrientation = true; // non-iOS browsers generally don't gate this, but may still never fire without a real sensor
+  }
+  window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+  window.removeEventListener('deviceorientation', handleOrientation, true);
+  if(gotOrientation){
+    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    setTimeout(()=>{
+      if(!receivedRealOrientation){ document.getElementById('arSimWrap').style.display='flex'; toast('No compass data detected — use the simulated heading slider.'); }
+    }, 1500);
+  } else {
+    document.getElementById('arSimWrap').style.display='flex';
+  }
+  if(navigator.geolocation){
+    await new Promise(resolve=>{
+      navigator.geolocation.getCurrentPosition(pos=>{
+        context.lat = pos.coords.latitude; context.lng = pos.coords.longitude; resolve();
+      }, ()=>resolve(), {timeout:5000, maximumAge:5000});
+    });
+    if(arWatchId!=null) navigator.geolocation.clearWatch(arWatchId);
+    arWatchId = navigator.geolocation.watchPosition(pos=>{
+      context.lat = pos.coords.latitude; context.lng = pos.coords.longitude;
+      renderARMarkers();
+    }, ()=>{}, {enableHighAccuracy:true, maximumAge:2000, timeout:8000});
+  }
+  arActive = true;
+  renderARMarkers();
+}
+function handleOrientation(e){
+  const heading = (e.webkitCompassHeading!=null) ? e.webkitCompassHeading : (e.alpha!=null ? (360-e.alpha)%360 : null);
+  if(heading==null) return;
+  receivedRealOrientation = true;
+  deviceHeading = heading;
+  renderARMarkers();
+}
+function renderARMarkers(){
+  document.getElementById('arHudHeading').textContent = 'heading ' + Math.round(deviceHeading) + '°';
+  document.getElementById('arHudLoc').textContent = context.lat.toFixed(4)+', '+context.lng.toFixed(4);
+  document.getElementById('arNeedle').style.transform = `translateX(-50%) rotate(${-deviceHeading}deg)`;
+  const layer = document.getElementById('arLayer'); layer.innerHTML='';
+  const fov = 70;
+  allItems().forEach(it=>{
+    const dist = haversineKm(context.lat, context.lng, it.lat, it.lng);
+    if(dist > 25) return;
+    const brg = bearingDeg(context.lat, context.lng, it.lat, it.lng);
+    let rel = ((brg - deviceHeading + 540) % 360) - 180;
+    if(Math.abs(rel) > fov/2) return;
+    const xPct = 50 + (rel/(fov/2))*46;
+    const scale = Math.max(0.55, 1 - dist/25);
+    const m = document.createElement('div'); m.className='ar-marker';
+    m.style.left = xPct+'%'; m.style.transform = `translate(-50%,-50%) scale(${scale})`;
+    m.innerHTML = `<div class="ar-pin">${CAT_ICON[it.category[0]]||'📍'}</div><div class="ar-label">${it.name} · ${dist.toFixed(1)}km</div>`;
+    m.onclick = ()=> openDetail(it);
+    layer.appendChild(m);
+  });
+}
+
+/* ---------- admin ---------- */
+function renderAdmin(){
+  renderDiagnostics();
+  const stats = document.getElementById('adminStats');
+  const items = allItems();
+  const avgRating = (items.reduce((s,i)=>s+i.rating,0)/items.length).toFixed(2);
+  const avgSust = (items.reduce((s,i)=>s+i.sustainability,0)/items.length*100).toFixed(0);
+  const top = [...items].sort((a,b)=>computeSCADE(b).total-computeSCADE(a).total)[0];
+  stats.innerHTML = `
+    <div class="stat"><b>${places.length}</b><span class="small">Tourist places</span></div>
+    <div class="stat"><b>${businesses.length}</b><span class="small">Local businesses</span></div>
+    <div class="stat"><b>${avgRating}</b><span class="small">Avg rating</span></div>
+    <div class="stat"><b>${avgSust}%</b><span class="small">Avg sustainability</span></div>
+    <div class="stat"><b style="font-size:1rem">${top.name}</b><span class="small">Top recommended now</span></div>`;
+  const body = document.getElementById('admTableBody'); body.innerHTML='';
+  items.forEach(it=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${it.name}</td><td>${it.kind}</td><td>${it.category.join(', ')}</td><td>${it.rating}★</td>
+      <td>${(it.sustainability*100).toFixed(0)}%</td>
+      <td>${it.kind==='business' ? `<button class="btn ghost" data-v>${it.verified?'Verified ✓':'Unverified'}</button>` : '—'}</td>
+      <td><button class="btn danger" data-x>Delete</button></td>`;
+    if(it.kind==='business') tr.querySelector('[data-v]').onclick = ()=>{ it.verified=!it.verified; renderAdmin(); toast(it.name+(it.verified?' verified':' marked unverified')); };
+    tr.querySelector('[data-x]').onclick = ()=>{
+      if(it.kind==='place') places = places.filter(p=>p.id!==it.id); else businesses = businesses.filter(b=>b.id!==it.id);
+      adminAdded = adminAdded.filter(a=>a.id!==it.id);
+      deletedIds.add(it.id);
+      renderAdmin(); populateRouteTargets(); toast('Removed ' + it.name);
+    };
+    body.appendChild(tr);
+  });
+}
+function adminAddItem(){
+  const type = document.getElementById('admType').value;
+  const name = document.getElementById('admName').value.trim();
+  if(!name){ toast('Give it a name first.'); return; }
+  const item = {
+    id:(type==='place'?'p':'b')+Date.now(), kind:type, name,
+    category:[document.getElementById('admCat').value],
+    lat:Number(document.getElementById('admLat').value), lng:Number(document.getElementById('admLng').value),
+    desc:'Added via admin panel.', open:document.getElementById('admOpen').value, close:document.getElementById('admClose').value,
+    visitDurationMin:Number(document.getElementById('admDur').value)||30, outdoor:false, timeSensitive:false,
+    sustainability:0.5, rating:4.0, ratingCount:1, popularity:0.2, localRelevance:0.5,
+    costLevel:Number(document.getElementById('admCost').value), verified:type==='business'?false:true, reviews:[]
+  };
+  if(type==='place') places.push(item); else businesses.push(item);
+  adminAdded.push(item);
+  document.getElementById('admName').value='';
+  renderAdmin(); populateRouteTargets();
+  toast('Added ' + name);
+}
+</script>
+</body>
+</html>
